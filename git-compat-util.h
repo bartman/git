@@ -203,6 +203,8 @@ extern void set_die_routine(NORETURN_PTR void (*routine)(const char *err, va_lis
 
 extern int prefixcmp(const char *str, const char *prefix);
 extern int suffixcmp(const char *str, const char *suffix);
+extern int invertible_prefix_cmp(const char *str, const char *prefix,
+		const char **pattern, int *inverted);
 
 static inline const char *skip_prefix(const char *str, const char *prefix)
 {

@@ -1025,25 +1025,32 @@ static void read_revisions_from_stdin(struct rev_info *revs, const char ***prune
 	strbuf_release(&sb);
 }
 
-static void add_grep(struct rev_info *revs, const char *ptn, enum grep_pat_token what)
+static void add_grep(struct rev_info *revs, const char *ptn, int is_negative,
+		enum grep_pat_token what)
 {
-	append_grep_pattern(&revs->grep_filter, ptn, "command line", 0, what);
+	append_grep_pattern(&revs->grep_filter, ptn, "command line", 0, what,
+			is_negative);
 }
 
-static void add_header_grep(struct rev_info *revs, enum grep_header_field field, const char *pattern)
+static void add_header_grep(struct rev_info *revs, enum grep_header_field field,
+		const char *pattern, int is_negative)
 {
-	append_header_grep_pattern(&revs->grep_filter, field, pattern);
+	append_header_grep_pattern(&revs->grep_filter, field, pattern,
+			is_negative);
 }
 
-static void add_message_grep(struct rev_info *revs, const char *pattern)
+static void add_message_grep(struct rev_info *revs, const char *pattern,
+		int is_negative)
 {
-	add_grep(revs, pattern, GREP_PATTERN_BODY);
+	add_grep(revs, pattern, is_negative, GREP_PATTERN_BODY);
 }
 
 static int handle_revision_opt(struct rev_info *revs, int argc, const char **argv,
 			       int *unkc, const char **unkv)
 {
 	const char *arg = argv[0];
+	int inverted;
+	const char *pattern;
 
 	/* pseudo revision arguments */
 	if (!strcmp(arg, "--all") || !strcmp(arg, "--branches") ||
@@ -1234,12 +1241,15 @@ static int handle_revision_opt(struct rev_info *revs, int argc, const char **arg
 	/*
 	 * Grepping the commit log
 	 */
-	else if (!prefixcmp(arg, "--author=")) {
-		add_header_grep(revs, GREP_HEADER_AUTHOR, arg+9);
-	} else if (!prefixcmp(arg, "--committer=")) {
-		add_header_grep(revs, GREP_HEADER_COMMITTER, arg+12);
-	} else if (!prefixcmp(arg, "--grep=")) {
-		add_message_grep(revs, arg+7);
+	else if (!invertible_prefix_cmp(arg, "--author=",
+				&pattern, &inverted)) {
+		add_header_grep(revs, GREP_HEADER_AUTHOR, pattern, inverted);
+	} else if (!invertible_prefix_cmp(arg, "--committer=",
+				&pattern, &inverted)) {
+		add_header_grep(revs, GREP_HEADER_COMMITTER, pattern, inverted);
+	} else if (!invertible_prefix_cmp (arg, "--grep=",
+				&pattern, &inverted)) {
+		add_message_grep(revs, pattern, inverted);
 	} else if (!strcmp(arg, "--extended-regexp") || !strcmp(arg, "-E")) {
 		revs->grep_filter.regflags |= REG_EXTENDED;
 	} else if (!strcmp(arg, "--regexp-ignore-case") || !strcmp(arg, "-i")) {

@@ -680,7 +680,7 @@ static int file_callback(const struct option *opt, const char *arg, int unset)
 		if (sb.len == 0)
 			continue;
 		append_grep_pattern(grep_opt, strbuf_detach(&sb, NULL), arg,
-				    ++lno, GREP_PATTERN);
+				    ++lno, GREP_PATTERN, 0);
 	}
 	fclose(patterns);
 	strbuf_release(&sb);
@@ -690,28 +690,28 @@ static int file_callback(const struct option *opt, const char *arg, int unset)
 static int not_callback(const struct option *opt, const char *arg, int unset)
 {
 	struct grep_opt *grep_opt = opt->value;
-	append_grep_pattern(grep_opt, "--not", "command line", 0, GREP_NOT);
+	append_grep_pattern(grep_opt, "--not", "command line", 0, GREP_NOT, 0);
 	return 0;
 }
 
 static int and_callback(const struct option *opt, const char *arg, int unset)
 {
 	struct grep_opt *grep_opt = opt->value;
-	append_grep_pattern(grep_opt, "--and", "command line", 0, GREP_AND);
+	append_grep_pattern(grep_opt, "--and", "command line", 0, GREP_AND, 0);
 	return 0;
 }
 
 static int open_callback(const struct option *opt, const char *arg, int unset)
 {
 	struct grep_opt *grep_opt = opt->value;
-	append_grep_pattern(grep_opt, "(", "command line", 0, GREP_OPEN_PAREN);
+	append_grep_pattern(grep_opt, "(", "command line", 0, GREP_OPEN_PAREN, 0);
 	return 0;
 }
 
 static int close_callback(const struct option *opt, const char *arg, int unset)
 {
 	struct grep_opt *grep_opt = opt->value;
-	append_grep_pattern(grep_opt, ")", "command line", 0, GREP_CLOSE_PAREN);
+	append_grep_pattern(grep_opt, ")", "command line", 0, GREP_CLOSE_PAREN, 0);
 	return 0;
 }
 
@@ -719,7 +719,7 @@ static int pattern_callback(const struct option *opt, const char *arg,
 			    int unset)
 {
 	struct grep_opt *grep_opt = opt->value;
-	append_grep_pattern(grep_opt, arg, "-e option", 0, GREP_PATTERN);
+	append_grep_pattern(grep_opt, arg, "-e option", 0, GREP_PATTERN, 0);
 	return 0;
 }
 
@@ -743,7 +743,7 @@ int cmd_grep(int argc, const char **argv, const char *prefix)
 		OPT_BOOLEAN(0, "cached", &cached,
 			"search in index instead of in the work tree"),
 		OPT_GROUP(""),
-		OPT_BOOLEAN('v', "invert-match", &opt.invert,
+		OPT_BOOLEAN('v', "invert-match", &opt.invert_line_match,
 			"show non-matching lines"),
 		OPT_BOOLEAN('i', "ignore-case", &opt.ignore_case,
 			"case insensitive matching"),
@@ -864,7 +864,7 @@ int cmd_grep(int argc, const char **argv, const char *prefix)
 	/* First unrecognized non-option token */
 	if (argc > 0 && !opt.pattern_list) {
 		append_grep_pattern(&opt, argv[0], "command line", 0,
-				    GREP_PATTERN);
+				    GREP_PATTERN, 0);
 		argv++;
 		argc--;
 	}

@@ -14,8 +14,10 @@ enum grep_pat_token {
 };
 
 enum grep_context {
+	GREP_CONTEXT_INITIALIZE,
 	GREP_CONTEXT_HEAD,
 	GREP_CONTEXT_BODY,
+	GREP_CONTEXT_FINALIZE,
 };
 
 enum grep_header_field {
@@ -27,6 +29,8 @@ struct grep_pat {
 	struct grep_pat *next;
 	const char *origin;
 	int no;
+	unsigned is_negative:1;
+	unsigned did_match:1;
 	enum grep_pat_token token;
 	const char *pattern;
 	enum grep_header_field field;
@@ -64,7 +68,8 @@ struct grep_opt {
 	int prefix_length;
 	regex_t regexp;
 	int linenum;
-	int invert;
+	int invert_line_match;
+	int invert_final_result;
 	int ignore_case;
 	int status_only;
 	int name_only;
@@ -96,8 +101,8 @@ struct grep_opt {
 	void *output_priv;
 };
 
-extern void append_grep_pattern(struct grep_opt *opt, const char *pat, const char *origin, int no, enum grep_pat_token t);
-extern void append_header_grep_pattern(struct grep_opt *, enum grep_header_field, const char *);
+extern void append_grep_pattern(struct grep_opt *opt, const char *pat, const char *origin, int no, enum grep_pat_token t, int is_negative);
+extern void append_header_grep_pattern(struct grep_opt *, enum grep_header_field, const char *, int is_negative);
 extern void compile_grep_patterns(struct grep_opt *opt);
 extern void free_grep_patterns(struct grep_opt *opt);
 extern int grep_buffer(struct grep_opt *opt, const char *name, char *buf, unsigned long size);

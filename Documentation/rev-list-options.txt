@@ -180,6 +180,12 @@ endif::git-rev-list[]
 	Limit the commits output to ones that match all given --grep,
 	--author and --committer instead of ones that match at least one.
 
+--not-author='pattern', --not-committer='pattern', --not-grep='pattern'::
+
+	When filtering the commits based on log message (`--not-grep`)
+	or people (`--not-author` and `--not-committer`), show commits that
+	do not match the criteria specified.
+
 -i::
 --regexp-ignore-case::
 

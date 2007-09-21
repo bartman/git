@@ -3,12 +3,15 @@
 #include "userdiff.h"
 #include "xdiff-interface.h"
 
-void append_header_grep_pattern(struct grep_opt *opt, enum grep_header_field field, const char *pat)
+void append_header_grep_pattern(struct grep_opt *opt, enum grep_header_field field, const char *pat, int is_negative)
 {
 	struct grep_pat *p = xcalloc(1, sizeof(*p));
 	p->pattern = pat;
 	p->origin = "header";
 	p->no = 0;
+	p->is_negative = !!is_negative;
+	if (p->is_negative)
+		opt->extended = 1;
 	p->token = GREP_PATTERN_HEAD;
 	p->field = field;
 	*opt->pattern_tail = p;
@@ -17,12 +20,16 @@ void append_header_grep_pattern(struct grep_opt *opt, enum grep_header_field fie
 }
 
 void append_grep_pattern(struct grep_opt *opt, const char *pat,
-			 const char *origin, int no, enum grep_pat_token t)
+			 const char *origin, int no, enum grep_pat_token t,
+			 int is_negative)
 {
 	struct grep_pat *p = xcalloc(1, sizeof(*p));
 	p->pattern = pat;
 	p->origin = origin;
 	p->no = no;
+	p->is_negative = !!is_negative;
+	if (p->is_negative)
+		opt->extended = 1;
 	p->token = t;
 	*opt->pattern_tail = p;
 	opt->pattern_tail = &p->next;
@@ -42,10 +49,12 @@ struct grep_opt *grep_opt_dup(const struct grep_opt *opt)
 	{
 		if(pat->token == GREP_PATTERN_HEAD)
 			append_header_grep_pattern(ret, pat->field,
-						   pat->pattern);
+						   pat->pattern,
+						   opt->invert_final_result);
 		else
 			append_grep_pattern(ret, pat->pattern, pat->origin,
-					    pat->no, pat->token);
+					    pat->no, pat->token,
+					    opt->invert_final_result);
 	}
 
 	return ret;
@@ -328,6 +337,16 @@ static int match_one_pattern(struct grep_pat *p, char *bol, char *eol,
 	int saved_ch = 0;
 	const char *start = bol;
 
+	if (ctx == GREP_CONTEXT_FINALIZE)
+		return p->is_negative
+			? !p->did_match
+			: p->did_match;
+
+	if (ctx == GREP_CONTEXT_INITIALIZE) {
+		p->did_match = 0;
+		return 0;
+	}
+
 	if ((p->token != GREP_PATTERN) &&
 	    ((p->token == GREP_PATTERN_HEAD) != (ctx == GREP_CONTEXT_HEAD)))
 		return 0;
@@ -390,12 +409,21 @@ static int match_one_pattern(struct grep_pat *p, char *bol, char *eol,
 				goto again;
 		}
 	}
+
 	if (p->token == GREP_PATTERN_HEAD && saved_ch)
 		*eol = saved_ch;
 	if (hit) {
 		pmatch[0].rm_so += bol - start;
 		pmatch[0].rm_eo += bol - start;
+
+		p->did_match = 1;
 	}
+
+	/* a negative pattern cannot match until the very end when we know
+	 * there have been no matches on any of the lines */
+	if (p->is_negative)
+		return 0;
+
 	return hit;
 }
 
@@ -646,7 +674,7 @@ static int should_lookahead(struct grep_opt *opt)
 
 	if (opt->extended)
 		return 0; /* punt for too complex stuff */
-	if (opt->invert)
+	if (opt->invert_line_match)
 		return 0;
 	for (p = opt->pattern_list; p; p = p->next) {
 		if (p->token != GREP_PATTERN)
@@ -750,6 +778,10 @@ static int grep_buffer_1(struct grep_opt *opt, const char *name,
 	if (!opt->output)
 		opt->output = std_output;
 
+	/* Reset flags in all grep_pat objects
+	 */
+	match_line (opt, NULL, NULL, GREP_CONTEXT_INITIALIZE, collect_hits);
+
 	if (buffer_is_binary(buf, size)) {
 		switch (opt->binary) {
 		case GREP_BINARY_DEFAULT:
@@ -803,6 +835,14 @@ static int grep_buffer_1(struct grep_opt *opt, const char *name,
 		hit = match_line(opt, bol, eol, ctx, collect_hits);
 		*eol = ch;
 
+		/* on the last line we can determine the hit of negative
+		 * patterns
+		 */
+		if (left < 2) {
+			hit = match_line (opt, NULL, NULL, GREP_CONTEXT_FINALIZE, collect_hits);
+		}
+
+
 		if (collect_hits)
 			goto next_line;
 
@@ -810,7 +850,7 @@ static int grep_buffer_1(struct grep_opt *opt, const char *name,
 		 * that do not have either, so inversion should
 		 * be done outside.
 		 */
-		if (opt->invert)
+		if (opt->invert_line_match)
 			hit = !hit;
 		if (opt->unmatch_name_only) {
 			if (hit)
@@ -918,12 +958,16 @@ static int chk_hit_marker(struct grep_expr *x)
 
 int grep_buffer(struct grep_opt *opt, const char *name, char *buf, unsigned long size)
 {
+	int result;
+
 	/*
 	 * we do not have to do the two-pass grep when we do not check
 	 * buffer-wide "all-match".
 	 */
-	if (!opt->all_match)
-		return grep_buffer_1(opt, name, buf, size, 0);
+	if (!opt->all_match) {
+		result = grep_buffer_1(opt, name, buf, size, 0);
+		goto done;
+	}
 
 	/* Otherwise the toplevel "or" terms hit a bit differently.
 	 * We first clear hit markers from them.
@@ -931,8 +975,10 @@ int grep_buffer(struct grep_opt *opt, const char *name, char *buf, unsigned long
 	clr_hit_marker(opt->pattern_expression);
 	grep_buffer_1(opt, name, buf, size, 1);
 
-	if (!chk_hit_marker(opt->pattern_expression))
-		return 0;
+	result = 0;
+	if (chk_hit_marker(opt->pattern_expression))
+		result = grep_buffer_1(opt, name, buf, size, 0);
 
-	return grep_buffer_1(opt, name, buf, size, 0);
+done:
+	return opt->invert_final_result ? !result : result;
 }

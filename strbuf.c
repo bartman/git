@@ -10,6 +10,48 @@ int prefixcmp(const char *str, const char *prefix)
 			return (unsigned char)*prefix - (unsigned char)*str;
 }
 
+int invertible_prefix_cmp(const char *str, const char *prefix,
+		const char **pattern, int *inverted)
+{
+	int prefix_len = strlen(prefix);
+	int rc;
+
+	*inverted = 0;
+	*pattern = str + prefix_len;
+
+	rc = strncmp(str, prefix, prefix_len-1);
+	if (rc)
+		goto try_alternate_form;
+
+	if (prefix[prefix_len-1] != '=')
+		return strncmp(str, prefix, strlen(prefix));
+
+	if (str[prefix_len-1] == '=')
+		return 0;
+
+	if (str[prefix_len-1] != '!'
+			|| str[prefix_len] != '=')
+		return 1;
+
+	*inverted = 1;
+	(*pattern) ++;
+	return 0;
+
+try_alternate_form:
+	if (prefix[0]!='-' || prefix[1]!='-')
+		return rc;
+
+	if (strncmp (str, "--not-", 6))
+		return rc;
+
+	if (strncmp (str+6, prefix+2, prefix_len-2))
+		return rc;
+
+	*inverted = 1;
+	(*pattern) += 4;
+	return 0;
+}
+
 int suffixcmp(const char *str, const char *suffix)
 {
 	int len = strlen(str), suflen = strlen(suffix);
