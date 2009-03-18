@@ -14,13 +14,19 @@ test_description='pulling from symlinked subdir'
 #
 # The working directory is subdir-link.
 
-mkdir subdir
-echo file >subdir/file
-git add subdir/file
-git commit -q -m file
-git clone -q . clone-repo
-ln -s clone-repo/subdir/ subdir-link
-
+test_expect_success setup '
+	mkdir subdir &&
+	echo file >subdir/file &&
+	git add subdir/file &&
+	git commit -q -m file &&
+	git clone -q . clone-repo &&
+	ln -s clone-repo/subdir/ subdir-link &&
+	(
+		cd clone-repo &&
+		git config receive.denyCurrentBranch warn
+	) &&
+	git config receive.denyCurrentBranch warn
+'
 
 # Demonstrate that things work if we just avoid the symlink
 #
