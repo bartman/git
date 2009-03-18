@@ -115,6 +115,10 @@ extern int parse_options(int argc, const char **argv,
 extern NORETURN void usage_with_options(const char * const *usagestr,
                                         const struct option *options);
 
+extern NORETURN void usage_msg_opt(const char *msg,
+				   const char * const *usagestr,
+				   const struct option *options);
+
 /*----- incremantal advanced APIs -----*/
 
 enum {
