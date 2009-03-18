@@ -11,7 +11,11 @@ struct archiver_args {
 	const char **pathspec;
 	unsigned int verbose : 1;
 	int compression_level;
+	int submodules;
 };
+
+#define SUBMODULES_CHECKEDOUT 1
+#define SUBMODULES_ALL 2
 
 typedef int (*write_archive_fn_t)(struct archiver_args *);
 

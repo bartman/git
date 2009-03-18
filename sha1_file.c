@@ -285,8 +285,7 @@ static int link_alt_odb_entry(const char * entry, int len, const char * relative
 
 	/* Detect cases where alternate disappeared */
 	if (!is_directory(ent->base)) {
-		error("object directory %s does not exist; "
-		      "check .git/objects/info/alternates.",
+		error("Alternate object directory %s does not exist",
 		      ent->base);
 		free(ent);
 		return -1;
@@ -2586,4 +2585,12 @@ int read_pack_header(int fd, struct pack_header *header)
 		/* "protocol error (pack version unsupported)" */
 		return PH_ERROR_PROTOCOL;
 	return 0;
+}
+
+int add_alt_odb(const char *path)
+{
+	int err = link_alt_odb_entry(path, strlen(path), NULL, 0);
+	if (!err)
+		prepare_packed_git_one((char *)path, 0);
+	return err;
 }
