@@ -124,6 +124,9 @@ static int do_push(const char *repo, int flags)
 		die("No destination configured to push to.");
 	}
 
+	if (remote->foreign_vcs)
+		die("Pushing with foreign VCSes not supported.");
+
 	if (remote->mirror)
 		flags |= (TRANSPORT_PUSH_MIRROR|TRANSPORT_PUSH_FORCE);
 

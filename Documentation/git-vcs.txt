@@ -1,0 +1,93 @@
+git-vcs-*(1)
+============
+
+NAME
+----
+git-vcs-* - Helper programs for interoperation with foreign systems
+
+SYNOPSIS
+--------
+'git vcs-<system>' <command> [options] [arguments]
+
+DESCRIPTION
+-----------
+
+These programs are normally not used directly by end users, but are
+invoked by various git programs that interact with remote repositories
+when the repository they would operate on is part of a foreign
+system.
+
+Each 'git vcs-<system>' is a helper for interoperating with a
+particular version control system. Different helpers have different
+capabilities (limited both be the particular helper and by the
+capabilities of the system they connect to), and they report what
+capabilities they support.
+
+In general, these programs interact with a portion of the refs
+namespace that isn't used by the rest of git. The configuration will
+then (generally) map these refs into the remotes namespace. This
+allows the importer to do whatever it wants with its refs without
+affecting the state visible to normal git programs.
+
+COMMANDS
+--------
+
+'capabilities'::
+	Prints the capabilities of the helper, one per line. These are:
+	 - import: the basic import command
+	 - marks: import should be done with a saved marks file
+	 - find-new-branches: detect new branches
+	 - export: the general export command
+	 - fork: create a new branch and export to it
+	 - anonymous-fork: make commits on a branch without an inherent name
+	 - merge: merge branches (of whatever type the system supports)
+
+	If the helper doesn't support "merge", the default for pull is
+	to rebase instead of merging.
+
+'list'::
+	Takes the remote name, and outputs the names of refs. These
+	may be followed, after a single space, by "changed" or
+	"unchanged", indicating whether the foreign repository has
+	changed from the state in the ref. If the helper doesn't know,
+	it doesn't have to provide a value. (In particular, it
+	shouldn't do expensive operations, such as importing the
+	content, to see whether it matches.)
+
+'import'::
+	Takes the remote name and a list of names of refs, and imports
+	whatever it describes, by outputting it in git-fast-import
+	format.
+
+'export'::
+	Sends the branch to the foreign system and reimports it in
+	fast-import format.
+
+	Reads a list of commits from stdin, where each commit has no
+	parents which were neither produced by an earlier import nor
+	appearing earlier in the list, where some commit has the old
+	value of the branch as a parent, and where all commits listed
+	are ancestors of the last one. Furthermore:
+
+	 - if the system doesn't support merges, each of these commits
+	   has only a single parent;
+
+	 - if the system doesn't support anonymous branches, the first
+	   commit has the old value of the branch as a parent (if the
+	   branch already had a value), and all parents are either the
+	   commit listed immediately before or produced by an earlier
+	   import;
+
+	 - if the system doesn't support many-way merges, each commit
+	   has at most two parents.
+
+	export produces output in fast-import format giving the
+	content after a round-trip through the foreign system. This
+	also contains extra headers to report the mapping of original
+	git commits to reimported git commits (to facilitate rewriting
+	local branches to use the history-as-reimported instead of the
+	git-only version).
+
+	export reports how much it managed to export by producing
+	commits in the fast-import stream that replace the listed
+	items that were successfully exported.

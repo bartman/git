@@ -87,6 +87,8 @@ int cmd_ls_remote(int argc, const char **argv, const char *prefix)
 		}
 	}
 	remote = nongit ? NULL : remote_get(dest);
+	if (remote && remote->foreign_vcs)
+		die("ls-remote not supported for foreign VCSes");
 	if (remote && !remote->url_nr)
 		die("remote %s has no configured URL", dest);
 	transport = transport_get(remote, remote ? remote->url[0] : dest);
