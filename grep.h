@@ -72,6 +72,9 @@ struct grep_opt {
 	int invert_final_result;
 	int ignore_case;
 	int status_only;
+#if 0
+	int shallow;		// stop testing patterns after hit
+#endif
 	int name_only;
 	int unmatch_name_only;
 	int count;

@@ -351,6 +351,18 @@ static int match_one_pattern(struct grep_pat *p, char *bol, char *eol,
 	    ((p->token == GREP_PATTERN_HEAD) != (ctx == GREP_CONTEXT_HEAD)))
 		return 0;
 
+#if 0
+	/* Shallow searches can stop matching lines early and just reuse the
+	 * previous match result because we are only interested if there was
+	 * at least one match.  For positive matches, we return 1 because once
+	 * we match the result will always be successful; conversely, for
+	 * negative matches once the base patter was found the result will
+	 * always be 0.
+	 */
+	if (opt->shallow && p->did_match)
+		return !p->is_negative;
+#endif
+
 	if (p->token == GREP_PATTERN_HEAD) {
 		const char *field;
 		size_t len;
